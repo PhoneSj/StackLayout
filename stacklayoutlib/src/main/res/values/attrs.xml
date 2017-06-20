@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="StackLayout">
+        <attr name="pileItemOffset"
+              format="dimension|reference"/>
+        <attr name="pileItemSum"
+              format="dimension|reference"/>
+    </declare-styleable>
+</resources>

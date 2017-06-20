@@ -5,11 +5,13 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -44,19 +46,18 @@ public class StackLayout extends ViewGroup {
 	private boolean isClick = false;
 	//判定的滑动方向
 	private Direction mDirection = Direction.NONE;
-	//	//当前x方向的偏移总量
-	//	private float mDistanceX;
-	//	//手指松开后的动画
-	//	private ValueAnimator mItemAnimator;
 
-	//	//当前的滑动状态
-	//	private PileLayout.State mState = PileLayout.State.CLOSE;
-	//	//上一次的滑动状态
-	//	private PileLayout.State oldState = PileLayout.State.CLOSE;
-	//	//将要进入的状态
-	//	private PileLayout.State newState = PileLayout.State.CLOSE;
+	private int distanceX = 0;
+	private int distanceY = 0;
 
-	private int distance = 0;
+	private int velocity = 0;
+
+	private int bgColor = Color.TRANSPARENT;
+	private Paint bgPaint;
+	private LinearGradient gradient;
+
+	private ValueAnimator flingAnimator;
+	private ValueAnimator xAnimator;
 
 	private ListAdapter adapter;
 
@@ -73,13 +74,6 @@ public class StackLayout extends ViewGroup {
 	enum Direction {
 		HORIZONTAL, VERTICAL, NONE
 	}
-	//
-	//	/**
-	//	 * 当前侧滑的状态
-	//	 */
-	//	enum State {
-	//		OPEN, CLOSE, MIDDLE
-	//	}
 
 	public StackLayout(Context context) {
 		this(context, null);
@@ -95,6 +89,12 @@ public class StackLayout extends ViewGroup {
 		TypedArray array = context.obtainStyledAttributes(attrs, R.styleable.StackLayout);
 		pileItemOffset = (int) array.getDimension(R.styleable.StackLayout_pileItemOffset, DEFAULT_PILE_ITEM_OFFSET);
 		pileItemSum = array.getInt(R.styleable.StackLayout_pileItemSum, DEFAULT_PILE_ITEM_SUM);
+		array.recycle();
+
+		bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+		gradient = new LinearGradient(0, 0, getMeasuredWidth(), 0, new int[] { Color.TRANSPARENT, bgColor },
+				new float[] { 0f, 1.0f }, Shader.TileMode.CLAMP);
+		bgPaint.setShader(gradient);
 	}
 
 	@Override
@@ -128,9 +128,9 @@ public class StackLayout extends ViewGroup {
 		int firstShowAllIndex = 0;
 		int firstShowAllTop = pileItemOffset * pileItemSum;
 		for (int i = 0; i < count; i++) {
-			if (totalHeight + distance >= pileItemOffset * pileItemSum) {
+			if (totalHeight + distanceY >= pileItemOffset * pileItemSum) {
 				firstShowAllIndex = i;
-				firstShowAllTop = totalHeight + distance;
+				firstShowAllTop = totalHeight + distanceY;
 				break;
 			}
 			totalHeight += getChildAt(i).getMeasuredHeight();
@@ -141,17 +141,17 @@ public class StackLayout extends ViewGroup {
 		int lastShowAllBottom = getMeasuredHeight() - pileItemOffset * pileItemSum;
 		for (int i = 0; i < count; i++) {
 			totalHeight += getChildAt(i).getMeasuredHeight();
-			if (totalHeight + distance < getMeasuredHeight() - pileItemOffset * pileItemSum) {
-				if (i + 1 < count && totalHeight + distance
+			if (totalHeight + distanceY < getMeasuredHeight() - pileItemOffset * pileItemSum) {
+				if (i + 1 < count && totalHeight + distanceY
 						+ getChildAt(i + 1).getMeasuredHeight() > getMeasuredHeight() - pileItemOffset * pileItemSum) {
 					lastShowAllIndex = i;
-					lastShowAllBottom = totalHeight + distance;
+					lastShowAllBottom = totalHeight + distanceY;
 					break;
 				}
 			}
 		}
 		//对中间部分item布局
-		int childLeft = 0;
+		int childLeft = distanceX;
 		int childTop = firstShowAllTop;
 		for (int i = firstShowAllIndex; i <= lastShowAllIndex; i++) {
 			final View child = getChildAt(i);
@@ -174,7 +174,7 @@ public class StackLayout extends ViewGroup {
 	private void layoutTopPile(int firstShowAllIndex, int firstShowAllTop) {
 		int topPileDistance = pileItemOffset * pileItemSum;
 		int itemHeight = getChildAt(firstShowAllIndex).getMeasuredHeight();
-		int childLeft = 0;
+		int childLeft = distanceX;
 		int childTop = pileItemOffset * pileItemSum;
 		float alpha = 1.0f;
 		for (int i = firstShowAllIndex - 1, z = -1, k = 1; i >= 0; i--, z--, k++) {
@@ -193,7 +193,7 @@ public class StackLayout extends ViewGroup {
 	private void layoutBottomPile(int lastShowAllIndex, int lastShowAllBottom) {
 		int count = getChildCount();
 		int itemHeight = getChildAt(lastShowAllIndex).getMeasuredHeight();
-		int childLeft = 0;
+		int childLeft = distanceX;
 		int childBottom = getMeasuredHeight() - pileItemOffset * pileItemSum;
 		float alpha = 1.0f;
 		for (int i = lastShowAllIndex + 1, z = -1, k = 1; i < count; i++, z--, k++) {
@@ -207,6 +207,19 @@ public class StackLayout extends ViewGroup {
 			child.setAlpha(alpha);
 			child.setZ(z);
 		}
+	}
+
+	public void setBgColor(int bgColor) {
+		this.bgColor = bgColor;
+		gradient = new LinearGradient(0, 0, getMeasuredWidth(), 0, new int[] { Color.TRANSPARENT, bgColor },
+				new float[] { 0.5f, 1.0f }, Shader.TileMode.CLAMP);
+		bgPaint.setShader(gradient);
+	}
+
+	@Override
+	protected void onDraw(Canvas canvas) {
+		super.onDraw(canvas);
+		canvas.drawRect(0, 0, getMeasuredWidth(), getMeasuredHeight(), bgPaint);
 	}
 
 	public void setAdapter(@NonNull ListAdapter adapter) {
@@ -229,18 +242,6 @@ public class StackLayout extends ViewGroup {
 			final View child = adapter.getView(i, null, this);
 			addView(child);
 		}
-	}
-
-	private Paint testPaint;
-
-	@Override
-	protected void dispatchDraw(Canvas canvas) {
-		super.dispatchDraw(canvas);
-		testPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-		testPaint.setColor(0x66ffaaaa);
-		canvas.drawRect(0, 0, getMeasuredWidth(), pileItemOffset * pileItemSum, testPaint);
-		canvas.drawRect(0, getMeasuredHeight() - pileItemOffset * pileItemSum, getMeasuredWidth(), getMeasuredHeight(),
-				testPaint);
 	}
 
 	//down事件的x、y坐标
@@ -272,8 +273,6 @@ public class StackLayout extends ViewGroup {
 		}
 		return super.onInterceptTouchEvent(event);
 	}
-
-	int velocity = 0;
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
@@ -314,17 +313,17 @@ public class StackLayout extends ViewGroup {
 				float dx = event.getX() - mDownX;
 				float dy = event.getY() - mDownY;
 				if (mDirection == Direction.NONE && (Math.abs(dx) > mTouchSlop || Math.abs(dy) > mTouchSlop)) {
-					//					if (Math.abs(dy) > Math.abs(dx)) {
-					mDirection = Direction.VERTICAL;
-					//					} else {
-					//						mDirection = Direction.NONE;
-					//					}
+					if (Math.abs(dy) > Math.abs(dx)) {
+						mDirection = Direction.VERTICAL;
+					} else {
+						mDirection = Direction.HORIZONTAL;
+					}
 				}
 
 				if (mDirection == Direction.VERTICAL) {
 					//响应竖直方向滑动，这里记录总偏移值
-					distance += event.getY() - mLastY;
-					distance = checkDistance(distance);
+					distanceY += event.getY() - mLastY;
+					distanceY = checkDistance(distanceY);
 					requestLayout();
 				}
 
@@ -337,8 +336,11 @@ public class StackLayout extends ViewGroup {
 				velocityTracker.computeCurrentVelocity(1000);
 				velocity = (int) velocityTracker.getYVelocity();
 				break;
-			case MotionEvent.ACTION_UP:
 			case MotionEvent.ACTION_CANCEL:
+				//接收到cancel事件时，不响应点击、长按
+				isClick = true;
+				isLongClick = true;
+			case MotionEvent.ACTION_UP:
 				if (mDirection == Direction.NONE) {
 					//没有触发长按事件才能触发点击事件
 					if (!isLongClick && mOnItemClickListener != null) {
@@ -350,29 +352,25 @@ public class StackLayout extends ViewGroup {
 				} else if (mDirection == Direction.VERTICAL) {
 					onFling(velocity);
 					velocity = 0;
+				} else if (mDirection == Direction.HORIZONTAL) {
+					//TODO
 				}
 				mLastX = 0;
 				mLastY = 0;
 				mLastDownTime = 0;
-				//				if (velocityTracker != null) {
-				//					velocityTracker.recycle();
-				//				}
 				break;
 		}
 		return true;
 	}
 
-	private ValueAnimator flingAnimator;
-
 	private void onFling(int velocity) {
-		Log.w("phoneTest", "velocity:" + velocity);
-		int newDistance = checkDistance(distance + velocity);
-		int duration = Math.abs(newDistance - distance);
-		flingAnimator = ValueAnimator.ofInt(distance, newDistance);
+		int newDistance = checkDistance(distanceY + velocity);
+		int duration = Math.abs(newDistance - distanceY);
+		flingAnimator = ValueAnimator.ofInt(distanceY, newDistance);
 		flingAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
 			@Override
 			public void onAnimationUpdate(ValueAnimator valueAnimator) {
-				distance = (int) valueAnimator.getAnimatedValue();
+				distanceY = (int) valueAnimator.getAnimatedValue();
 				requestLayout();
 			}
 		});

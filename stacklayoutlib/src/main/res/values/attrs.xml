@@ -4,6 +4,10 @@
         <attr name="pileItemOffset"
               format="dimension|reference"/>
         <attr name="pileItemSum"
+              format="integer"/>
+    </declare-styleable>
+    <declare-styleable name="SpecialLayout">
+        <attr name="initOffsetX"
               format="dimension|reference"/>
     </declare-styleable>
 </resources>

@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.Canvas;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,6 +20,7 @@ public class SpecialLayout extends ViewGroup {
 
 	private static final int DEFAULT_INIT_OFFSET_X = 0;
 
+	//子控件初始偏移量
 	private int initOffsetX = 0;
 	private int distanceX = 0;
 	private float mDownX;
@@ -34,6 +34,11 @@ public class SpecialLayout extends ViewGroup {
 	private State curState = State.Close;
 	private State futureState = State.None;
 
+	private ValueAnimator animator;
+
+	/**
+	 * 子控件拉动的状态
+	 */
 	enum State {
 		Open, Close, Middle, None
 	}
@@ -151,8 +156,9 @@ public class SpecialLayout extends ViewGroup {
 		}
 	}
 
-	private ValueAnimator animator;
-
+	/**
+	 * 手指松开
+	 */
 	private void onRealese() {
 		if (futureState == State.Open) {
 			animator = ValueAnimator.ofInt(distanceX, 0);
@@ -214,11 +220,9 @@ public class SpecialLayout extends ViewGroup {
 		}
 	}
 
-	@Override
-	protected void onDraw(Canvas canvas) {
-		super.onDraw(canvas);
-	}
-
+	/**
+	 * 水平滑动比例进度监听
+	 */
 	public interface OnOffsetXFractionListener {
 		void onOffsetFraction(float fraction);
 	}

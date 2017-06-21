@@ -4,12 +4,8 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
-import android.graphics.Shader;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -30,8 +26,9 @@ public class StackLayout extends ViewGroup {
 	private static final int DEFAULT_PILE_ITEM_OFFSET = 30;
 	private static final int DEFAULT_PILE_ITEM_SUM = 3;
 	private final static long LONG_CLICK_LIMIT = 500;
-
+	//上下堆叠区域中相邻item的偏移量
 	private int pileItemOffset = DEFAULT_PILE_ITEM_OFFSET;
+	//上下堆叠区域中可见的队列数量
 	private int pileItemSum = DEFAULT_PILE_ITEM_SUM;
 
 	//速度跟踪器
@@ -50,14 +47,18 @@ public class StackLayout extends ViewGroup {
 	private int distanceX = 0;
 	private int distanceY = 0;
 
+	//down事件的x、y坐标
+	private float mDownX;
+	private float mDownY;
+	//上次事件的x、y坐标
+	private float mLastX;
+	private float mLastY;
+
 	private int velocity = 0;
 
-	private int bgColor = Color.TRANSPARENT;
 	private Paint bgPaint;
-	private LinearGradient gradient;
 
 	private ValueAnimator flingAnimator;
-	private ValueAnimator xAnimator;
 
 	private ListAdapter adapter;
 
@@ -92,9 +93,7 @@ public class StackLayout extends ViewGroup {
 		array.recycle();
 
 		bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-		gradient = new LinearGradient(0, 0, getMeasuredWidth(), 0, new int[] { Color.TRANSPARENT, bgColor },
-				new float[] { 0f, 1.0f }, Shader.TileMode.CLAMP);
-		bgPaint.setShader(gradient);
+		bgPaint.setStyle(Paint.Style.FILL);
 	}
 
 	@Override
@@ -209,19 +208,6 @@ public class StackLayout extends ViewGroup {
 		}
 	}
 
-	public void setBgColor(int bgColor) {
-		this.bgColor = bgColor;
-		gradient = new LinearGradient(0, 0, getMeasuredWidth(), 0, new int[] { Color.TRANSPARENT, bgColor },
-				new float[] { 0.5f, 1.0f }, Shader.TileMode.CLAMP);
-		bgPaint.setShader(gradient);
-	}
-
-	@Override
-	protected void onDraw(Canvas canvas) {
-		super.onDraw(canvas);
-		canvas.drawRect(0, 0, getMeasuredWidth(), getMeasuredHeight(), bgPaint);
-	}
-
 	public void setAdapter(@NonNull ListAdapter adapter) {
 		if (adapter == null) {
 			throw new IllegalArgumentException("The adapter cannot be null.");
@@ -243,13 +229,6 @@ public class StackLayout extends ViewGroup {
 			addView(child);
 		}
 	}
-
-	//down事件的x、y坐标
-	private float mDownX;
-	private float mDownY;
-	//上次事件的x、y坐标
-	private float mLastX;
-	private float mLastY;
 
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent event) {

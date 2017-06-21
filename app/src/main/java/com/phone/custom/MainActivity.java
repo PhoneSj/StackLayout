@@ -3,9 +3,9 @@ package com.phone.custom;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.graphics.Palette;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -58,16 +58,24 @@ public class MainActivity extends Activity {
 		specialLayout.setOnOffsetXFractionListener(new SpecialLayout.OnOffsetXFractionListener() {
 			@Override
 			public void onOffsetFraction(float fraction) {
-				Log.w("phoneTest", "fraction");
+				//				Log.w("phoneTest", "fraction");
 				int count = stackLayout.getChildCount();
 				for (int i = 0; i < count; i++) {
 					final ViewGroup itemView = (ViewGroup) stackLayout.getChildAt(i);
 					itemView.getChildAt(1).setAlpha(1 - fraction);
+
+					int red = Color.red(bgColor);
+					int green = Color.green(bgColor);
+					int blue = Color.blue(bgColor);
+					int color = Color.argb((int) (255 * (1 - fraction)), red, green, blue);
+					stackLayout.setBackgroundColor(color);
 				}
 			}
 		});
 		changeColor();
 	}
+
+	private int bgColor = Color.TRANSPARENT;
 
 	private void changeColor() {
 		Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.bg);
@@ -75,9 +83,7 @@ public class MainActivity extends Activity {
 			@Override
 			public void onGenerated(Palette palette) {
 				Palette.Swatch vibrant = palette.getMutedSwatch();
-				//				stackLayout.setBackgroundColor(vibrant.getRgb());
-				stackLayout.setBgColor(vibrant.getRgb());
-
+				bgColor = vibrant.getRgb();
 			}
 		});
 	}

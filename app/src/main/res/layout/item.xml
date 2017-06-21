@@ -20,6 +20,7 @@
         android:layout_centerVertical="true"
         android:layout_marginRight="8dp"
         android:layout_toLeftOf="@+id/imageView"
+        android:alpha="0"
         android:text="name"
         android:textColor="@android:color/white"/>
 </RelativeLayout>

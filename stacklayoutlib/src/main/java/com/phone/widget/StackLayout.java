@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -329,8 +330,10 @@ public class StackLayout extends ViewGroup {
 					}
 					isLongClick = false;
 				} else if (mDirection == Direction.VERTICAL) {
-					onFling(velocity);
-					velocity = 0;
+					if (Math.abs(velocity) > 200) {
+						onFling(velocity);
+						velocity = 0;
+					}
 				} else if (mDirection == Direction.HORIZONTAL) {
 					//TODO
 				}
@@ -343,8 +346,10 @@ public class StackLayout extends ViewGroup {
 	}
 
 	private void onFling(int velocity) {
+		Log.i("phone", "velocity:" + velocity);
 		int newDistance = checkDistance(distanceY + velocity);
-		int duration = Math.abs(newDistance - distanceY);
+		//		int duration = Math.abs(newDistance - distanceY);
+		int duration = calculateDuration(velocity);
 		flingAnimator = ValueAnimator.ofInt(distanceY, newDistance);
 		flingAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
 			@Override
@@ -356,6 +361,10 @@ public class StackLayout extends ViewGroup {
 		flingAnimator.setInterpolator(new DecelerateInterpolator());
 		flingAnimator.setDuration(duration);
 		flingAnimator.start();
+	}
+
+	private int calculateDuration(int velocity) {
+		return Math.abs(velocity) > 3000 ? 3000 : Math.abs(velocity);
 	}
 
 	/**
